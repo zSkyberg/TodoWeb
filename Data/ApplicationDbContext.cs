@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using TodoWeb.Models;
 
 namespace TodoWeb.Data
 {
@@ -11,6 +12,10 @@ namespace TodoWeb.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
+
         }
+        public DbSet<Category> Categories { get; set; }
+        public DbSet<TodoItem> TodoItems { get; set; }
+
     }
 }
