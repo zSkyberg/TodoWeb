@@ -20,10 +20,28 @@ namespace TodoWeb.Controllers
         }
 
         // GET: Todo
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(SearchViewModel searchModel)
         {
-            var applicationDbContext = _context.TodoItems.Include(t => t.Category);
-            return View(await applicationDbContext.ToListAsync());
+
+
+           
+            var query = _context.TodoItems.Include(t => t.Category).AsQueryable();//select * from TodoItems t inner join Categories c on t.Categoryıd = c.id
+
+           
+                query = query.Where(t => t.Category.Id == searchModel.CategoryId);
+            
+            if (!searchModel.ShowAll)
+            {
+                query = query.Where(t => !t.IsCompleted);// where t.IsCompleted = 0
+            }
+            if (!String.IsNullOrWhiteSpace(searchModel.SearchText))
+            {
+                query = query.Where(t => t.Title.Contains(searchModel.SearchText));//where t.Title like '%searchtexet%'
+            }
+            query = query.OrderBy(t => t.DueDate);
+            searchModel.Result = await query.ToListAsync();
+            //  .Where(t=> !t.IsCompleted).OrderBy(t=>t.DueDate);
+            return View(searchModel);
         }
 
         // GET: Todo/Details/5
@@ -48,7 +66,7 @@ namespace TodoWeb.Controllers
         // GET: Todo/Create
         public IActionResult Create()
         {
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Name");
+            ViewBag.CategorySelectList = new SelectList(_context.Categories, "Id", "Name");
             return View();
         }
 
@@ -65,7 +83,7 @@ namespace TodoWeb.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Id", todoItem.CategoryId);
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Name", todoItem.CategoryId);
             return View(todoItem);
         }
 
@@ -82,7 +100,7 @@ namespace TodoWeb.Controllers
             {
                 return NotFound();
             }
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Id", todoItem.CategoryId);
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Name", todoItem.CategoryId);
             return View(todoItem);
         }
 
@@ -118,7 +136,7 @@ namespace TodoWeb.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Id", todoItem.CategoryId);
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Name", todoItem.CategoryId);
             return View(todoItem);
         }
 
@@ -152,6 +170,29 @@ namespace TodoWeb.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        public async Task<IActionResult> MakeComplete(int id,bool showAll)
+        {
+            return await ChangeStatus(id, true, showAll);
+        }
+        public async Task<IActionResult> MakeInComplete(int id, bool showAll)
+        {
+            return await ChangeStatus(id, false, showAll);
+        }
+        private async Task<IActionResult> ChangeStatus(int id,bool status,bool CurrentShowallValue)
+        {
+            var todoItemItem = _context.TodoItems.FirstOrDefault(t => t.Id == id);
+            if (todoItemItem == null)
+            {
+                return NotFound();
+            }
+            todoItemItem.IsCompleted = status;
+            todoItemItem.CompletedDate = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index),new {showall = CurrentShowallValue });
+        }
+
+      
         private bool TodoItemExists(int id)
         {
             return _context.TodoItems.Any(e => e.Id == id);

@@ -20,9 +20,28 @@ namespace TodoWeb.Controllers
         }
 
         // GET: Categories
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(SearchViewModel searchCategoryModel)
         {
-            return View(await _context.Categories.ToListAsync());
+            var query = _context.Categories.AsQueryable();
+
+            if (searchCategoryModel.SearchInDescription)
+            {
+                if (!String.IsNullOrWhiteSpace(searchCategoryModel.SearchText))
+                {
+                    query = query.Where(t => t.Description.Contains(searchCategoryModel.SearchText) || t.Name.Contains(searchCategoryModel.SearchText));
+                }
+            } else
+            {
+                if (!String.IsNullOrWhiteSpace(searchCategoryModel.SearchText))
+                {
+
+                    query = query.Where(t => t.Name.Contains(searchCategoryModel.SearchText));
+
+                }
+            }
+            
+            searchCategoryModel.CategoryResult = await query.ToListAsync();
+            return View(searchCategoryModel);
         }
 
         // GET: Categories/Details/5
@@ -54,7 +73,7 @@ namespace TodoWeb.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Name")] Category category)
+        public async Task<IActionResult> Create([Bind("Id,Name,Description")] Category category)
         {
             if (ModelState.IsValid)
             {
@@ -86,7 +105,7 @@ namespace TodoWeb.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name")] Category category)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description")] Category category)
         {
             if (id != category.Id)
             {
@@ -144,7 +163,7 @@ namespace TodoWeb.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
-
+      
         private bool CategoryExists(int id)
         {
             return _context.Categories.Any(e => e.Id == id);

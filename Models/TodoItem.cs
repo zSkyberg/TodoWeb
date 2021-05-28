@@ -22,7 +22,7 @@ namespace TodoWeb.Models
         [DataType(DataType.MultilineText)]
         public string Description { get; set; }
         [Display(Name =" Is Completed")]
-        public bool isCompleted { get; set; }
+        public bool IsCompleted { get; set; }
         [Display(Name = " Due Date")]
         public DateTime DueDate { get; set; }
         [ScaffoldColumn(false)]
@@ -33,7 +33,7 @@ namespace TodoWeb.Models
         {
             get
             {
-                var remainingTime = (DateTime.Now - DueDate);
+                var remainingTime = (DueDate - DateTime.Now);
                 return (int) remainingTime.TotalHours;
             }
         }
