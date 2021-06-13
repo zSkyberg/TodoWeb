@@ -42,10 +42,10 @@
         <tr>
 
             <th>
-                cATEGORY
+                Title
             </th>
             <th>
-                TiTLE
+                Category
             </th>
             <th>
                 DueDate
@@ -67,21 +67,21 @@
             <td>
                 @if (item.IsCompleted)
                 {
-                    <del> @Html.DisplayFor(modelItem => item.Category.Name)</del>
+                    <del> @Html.DisplayFor(modelItem => item.Title)</del>
                 }
                 else
                 {
-                    @Html.DisplayFor(modelItem => item.Category.Name)
+                    @Html.DisplayFor(modelItem => item.Title)
                 }
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Title)
+                @Html.DisplayFor(modelItem => item.Category.Name)
             </td>
             <td>
                 @Html.DisplayFor(modelItem => item.DueDate)
             </td>
             <th>
-                @Html.DisplayFor(model => item.RemainingHour)
+                @Html.DisplayFor(modelItem => item.RemainingHour)
             </th>
             <td>
                 @Html.DisplayFor(modelItem => item.IsCompleted)
