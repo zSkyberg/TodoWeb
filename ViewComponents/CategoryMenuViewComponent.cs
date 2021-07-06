@@ -17,9 +17,9 @@ namespace TodoWeb.ViewComponents
             this.dbContext = dbContext;
         }
 
-        public async Task<IViewComponentResult> InvokeAsync()
+        public async Task<IViewComponentResult> InvokeAsync(bool ShowEmpty = true)
         {
-            var items = await dbContext.Categories.ToListAsync();
+            var items = await dbContext.Categories.Where(c=>ShowEmpty || c.TodoItems.Any() ).ToListAsync();
             return View(items);
         }
     }

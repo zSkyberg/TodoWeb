@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -10,22 +12,26 @@ using TodoWeb.Models;
 
 namespace TodoWeb.Controllers
 {
+    [Authorize]
     public class TodoController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<CetUser> _userManager;
 
-        public TodoController(ApplicationDbContext context)
+        public TodoController(ApplicationDbContext context,UserManager<CetUser> userManager)
         {
             _context = context;
+           _userManager = userManager;
         }
 
         // GET: Todo
+       
         public async Task<IActionResult> Index(SearchViewModel searchModel)
         {
 
-
-           
-            var query = _context.TodoItems.Include(t => t.Category).AsQueryable();//select * from TodoItems t inner join Categories c on t.Categoryıd = c.id
+            var cetUser = await _userManager.GetUserAsync(HttpContext.User);
+          
+            var query = _context.TodoItems.Include(t => t.Category).Where(t=> t.CetUserId == cetUser.Id);//select * from TodoItems t inner join Categories c on t.Categoryıd = c.id
 
            
                 query = query.Where(t => t.Category.Id == searchModel.CategoryId);
@@ -38,7 +44,7 @@ namespace TodoWeb.Controllers
             {
                 query = query.Where(t => t.Title.Contains(searchModel.SearchText));//where t.Title like '%searchtexet%'
             }
-            query = query.OrderBy(t => t.DueDate);
+            //query = query.OrderBy(t => t.DueDate);
             searchModel.Result = await query.ToListAsync();
             //  .Where(t=> !t.IsCompleted).OrderBy(t=>t.DueDate);
             return View(searchModel);
@@ -64,6 +70,7 @@ namespace TodoWeb.Controllers
         }
 
         // GET: Todo/Create
+        [Authorize]
         public IActionResult Create()
         {
             ViewBag.CategorySelectList = new SelectList(_context.Categories, "Id", "Name");
@@ -74,9 +81,12 @@ namespace TodoWeb.Controllers
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
+        [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Title,Description,isCompleted,DueDate,CategoryId")] TodoItem todoItem)
         {
+            var cetUser = await _userManager.GetUserAsync(HttpContext.User);
+            todoItem.CetUserId = cetUser.Id;
             if (ModelState.IsValid)
             {
                 _context.Add(todoItem);
@@ -96,6 +106,12 @@ namespace TodoWeb.Controllers
             }
 
             var todoItem = await _context.TodoItems.FindAsync(id);
+            var currentUser = await _userManager.GetUserAsync(HttpContext.User);
+            if (todoItem.CetUserId != currentUser.Id)
+            {
+                return Unauthorized();
+            }
+
             if (todoItem == null)
             {
                 return NotFound();
@@ -109,7 +125,7 @@ namespace TodoWeb.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,isCompleted,DueDate,CategoryId")] TodoItem todoItem)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,isCompleted,DueDate,CategoryId,CreatedDate,CetUserId")] TodoItem todoItem)
         {
             if (id != todoItem.Id)
             {
@@ -120,7 +136,19 @@ namespace TodoWeb.Controllers
             {
                 try
                 {
-                    _context.Update(todoItem);
+                    var oldTodo = await  _context.TodoItems.FindAsync(id);
+                    var currentUser = await _userManager.GetUserAsync(HttpContext.User);
+                    if(oldTodo.CetUserId == currentUser.Id)
+                    {
+                        return Unauthorized();
+                    }
+                    oldTodo.Title = todoItem.Title;
+                    oldTodo.CompletedDate = todoItem.CompletedDate;
+                    oldTodo.CategoryId = todoItem.CategoryId;
+                    oldTodo.IsCompleted = todoItem.IsCompleted;
+                    oldTodo.Description = todoItem.Description;
+                    oldTodo.DueDate = todoItem.DueDate;
+                    _context.Update(oldTodo);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
@@ -178,7 +206,7 @@ namespace TodoWeb.Controllers
         {
             return await ChangeStatus(id, false, showAll);
         }
-        private async Task<IActionResult> ChangeStatus(int id,bool status,bool CurrentShowallValue)
+        private async Task<IActionResult> ChangeStatus(int id,bool status,bool currentShowallValue)
         {
             var todoItemItem = _context.TodoItems.FirstOrDefault(t => t.Id == id);
             if (todoItemItem == null)
@@ -189,7 +217,7 @@ namespace TodoWeb.Controllers
             todoItemItem.CompletedDate = DateTime.Now;
 
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index),new {showall = CurrentShowallValue });
+            return RedirectToAction(nameof(Index),new {showall = currentShowallValue });
         }
 
       
